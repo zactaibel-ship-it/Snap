@@ -14,16 +14,13 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { CORS_HEADERS, jsonResponse } from '../_shared/cors.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const YOUTUBE_DATA_API_KEY = Deno.env.get('YOUTUBE_DATA_API_KEY') ?? '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 type Platform = 'youtube' | 'tiktok' | 'instagram';
 
@@ -58,13 +55,6 @@ class ExtractionError extends Error {
   ) {
     super(message);
   }
-}
-
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-  });
 }
 
 function detectPlatform(url: string): Platform | null {
@@ -361,7 +351,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { url, user_id: userId } = await req.json();
+    const { url, user_id: userId, followed_creator_id: followedCreatorId } = await req.json();
 
     if (typeof url !== 'string' || !url.trim()) {
       throw new ExtractionError('invalid_url', 'A video URL is required.');
@@ -370,22 +360,43 @@ Deno.serve(async (req) => {
       throw new ExtractionError('invalid_url', 'A user_id is required.', 401);
     }
 
-    // Verify the caller's session actually belongs to the user_id they're asking us to save as.
+    // Two ways to call this function: as the signed-in user themselves (their
+    // JWT must match user_id), or as another one of our own edge functions
+    // acting on that user's behalf (e.g. import-creator-recipes), which
+    // authenticates with the service role key instead of a user session.
     const authHeader = req.headers.get('Authorization') ?? '';
-    const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const {
-      data: { user: callerUser },
-    } = await callerClient.auth.getUser();
+    const isTrustedInternalCall = authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
 
-    if (!callerUser || callerUser.id !== userId) {
-      throw new ExtractionError('unauthorized', 'You are not authorised to perform this action.', 401);
+    if (!isTrustedInternalCall) {
+      const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const {
+        data: { user: callerUser },
+      } = await callerClient.auth.getUser();
+
+      if (!callerUser || callerUser.id !== userId) {
+        throw new ExtractionError('unauthorized', 'You are not authorised to perform this action.', 401);
+      }
     }
 
     const platform = detectPlatform(url);
     if (!platform) {
       throw new ExtractionError('unsupported_platform', 'Only YouTube, TikTok, and Instagram Reels are supported.');
+    }
+
+    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Skip re-extracting (and re-billing OpenAI for) a video this user already has.
+    const { data: existingRecipe } = await adminClient
+      .from('recipes')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('source_url', url)
+      .maybeSingle();
+
+    if (existingRecipe) {
+      return jsonResponse({ recipe: existingRecipe, lowConfidence: false, alreadyImported: true });
     }
 
     const context = await gatherContext(platform, url);
@@ -397,7 +408,6 @@ Deno.serve(async (req) => {
     });
     const recipe = validateRecipePayload(aiPayload);
 
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: savedRecipe, error: insertError } = await adminClient
       .from('recipes')
       .insert({
@@ -414,6 +424,7 @@ Deno.serve(async (req) => {
         cook_time_minutes: recipe.cook_time_minutes,
         dietary_tags: recipe.dietary_tags,
         creator_name: context.creatorName,
+        followed_creator_id: typeof followedCreatorId === 'string' ? followedCreatorId : null,
         extracted_at: new Date().toISOString(),
       })
       .select('*')

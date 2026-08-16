@@ -36,6 +36,17 @@
           "icon": "./assets/icon.png",
           "color": "#1B4332"
         }
+      ],
+      [
+        "expo-share-extension",
+        {
+          "activationRules": [
+            { "type": "url", "max": 1 },
+            { "type": "text", "max": 1 }
+          ],
+          "excludedPackages": ["expo-splash-screen", "expo-notifications", "expo-apple-authentication"],
+          "backgroundColor": { "red": 27, "green": 67, "blue": 50, "alpha": 1 }
+        }
       ]
     ],
     "experiments": {

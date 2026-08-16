@@ -17,6 +17,7 @@ export type User = {
   avatar_url: string | null;
   dietary_preferences: string[];
   supermarket_preference: SupermarketPreference;
+  push_token: string | null;
   created_at: string;
 };
 
@@ -36,6 +37,7 @@ export type Recipe = {
   dietary_tags: string[];
   creator_name: string | null;
   rating: number | null;
+  followed_creator_id: string | null;
   extracted_at: string;
   created_at: string;
 };
@@ -87,17 +89,18 @@ export type Database = {
     Tables: {
       users: {
         Row: User;
-        Insert: Omit<User, 'created_at'> & { created_at?: string };
+        Insert: Omit<User, 'created_at' | 'push_token'> & { created_at?: string; push_token?: string | null };
         Update: Partial<Omit<User, 'id'>>;
         Relationships: [];
       };
       recipes: {
         Row: Recipe;
-        Insert: Omit<Recipe, 'id' | 'created_at' | 'extracted_at' | 'rating'> & {
+        Insert: Omit<Recipe, 'id' | 'created_at' | 'extracted_at' | 'rating' | 'followed_creator_id'> & {
           id?: string;
           created_at?: string;
           extracted_at?: string;
           rating?: number | null;
+          followed_creator_id?: string | null;
         };
         Update: Partial<Omit<Recipe, 'id'>>;
         Relationships: [];
