@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 
 import { Sheet } from '@/components/ui/Sheet';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useRecipes } from '@/hooks/useRecipes';
+import { haptics } from '@/lib/haptics';
 import { applyRecipeFiltersAndSearch, DEFAULT_FILTERS } from '@/lib/recipeFilters';
 import type { MealType, Recipe } from '@/lib/database.types';
 
@@ -48,11 +51,22 @@ export function RecipePickerSheet({ visible, onClose, mealType, onSelectRecipe }
             className="h-11 flex-1 text-sm text-text"
             autoCapitalize="none"
             autoCorrect={false}
+            accessibilityLabel="Search your saved recipes"
           />
         </View>
 
         {isLoading ? (
-          <Text className="text-sm text-text-muted">Loading your recipes...</Text>
+          <View className="gap-3">
+            {[1, 2, 3].map((key) => (
+              <View key={key} className="flex-row items-center gap-3">
+                <Skeleton width={48} height={48} radius={12} />
+                <View className="flex-1 gap-2">
+                  <Skeleton height={13} width="70%" />
+                  <Skeleton height={11} width="40%" />
+                </View>
+              </View>
+            ))}
+          </View>
         ) : results.length === 0 ? (
           <Text className="py-6 text-center text-sm text-text-muted">
             {recipes?.length ? 'No recipes match your search.' : "You don't have any saved recipes yet."}
@@ -64,15 +78,18 @@ export function RecipePickerSheet({ visible, onClose, mealType, onSelectRecipe }
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Select recipe: ${item.title}`}
                 onPress={() => {
+                  haptics.selection();
                   onSelectRecipe(item);
                   handleClose();
                 }}
-                className="flex-row items-center gap-3 border-b border-border py-2.5"
+                className="min-h-[44px] flex-row items-center gap-3 border-b border-border py-2.5"
               >
                 <View className="h-12 w-12 overflow-hidden rounded-xl bg-border">
                   {item.thumbnail_url ? (
-                    <Image source={{ uri: item.thumbnail_url }} className="h-full w-full" resizeMode="cover" />
+                    <Image source={{ uri: item.thumbnail_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} />
                   ) : (
                     <View className="h-full w-full items-center justify-center">
                       <Ionicons name="restaurant-outline" size={18} color="#6B7280" />

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { Alert, FlatList, Image, Pressable, Switch, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RecipeCard } from '@/components/recipe/RecipeCard';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonCard } from '@/components/ui/Skeleton';
+import { NetworkError } from '@/components/ui/NetworkError';
+import { RecipeGridSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import {
   useCreator,
   useCreatorLiveStats,
@@ -26,7 +28,7 @@ function formatCount(count: number): string {
 
 export default function CreatorProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: creator, isLoading } = useCreator(id);
+  const { data: creator, isLoading, isError, refetch } = useCreator(id);
   const { data: recipes, isLoading: isRecipesLoading } = useCreatorRecipes(id);
   const { data: liveStats } = useCreatorLiveStats(creator?.platform_creator_id);
 
@@ -67,9 +69,20 @@ export default function CreatorProfileScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <View className="gap-3 p-5">
-          <SkeletonCard />
+        <View className="items-center gap-3 px-5 pb-5 pt-4">
+          <Skeleton width={96} height={96} radius={48} />
+          <Skeleton height={18} width="50%" />
+          <Skeleton height={12} width="35%" />
         </View>
+        <RecipeGridSkeleton />
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <NetworkError onRetry={refetch} message="We couldn't load this creator." />
       </SafeAreaView>
     );
   }
@@ -105,7 +118,7 @@ export default function CreatorProfileScreen() {
             <View className="items-center gap-3">
               <View className="h-24 w-24 overflow-hidden rounded-full bg-border">
                 {creator.avatar_url ? (
-                  <Image source={{ uri: creator.avatar_url }} className="h-full w-full" resizeMode="cover" />
+                  <Image source={{ uri: creator.avatar_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} />
                 ) : (
                   <View className="h-full w-full items-center justify-center">
                     <Ionicons name="person" size={36} color="#6B7280" />
@@ -179,14 +192,7 @@ export default function CreatorProfileScreen() {
         }
         ListEmptyComponent={
           isRecipesLoading ? (
-            <View className="flex-row flex-wrap gap-3 px-5">
-              <View className="w-[47%]">
-                <SkeletonCard />
-              </View>
-              <View className="w-[47%]">
-                <SkeletonCard />
-              </View>
-            </View>
+            <RecipeGridSkeleton count={4} />
           ) : (
             <View className="px-5">
               <EmptyState

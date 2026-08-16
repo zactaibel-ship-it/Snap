@@ -34,7 +34,12 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-end">
-        <Pressable className="absolute inset-0" onPress={onClose}>
+        <Pressable
+          className="absolute inset-0"
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        >
           <Animated.View className="absolute inset-0 bg-black" style={backdropStyle} />
         </Pressable>
         <Animated.View

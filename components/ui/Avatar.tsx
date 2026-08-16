@@ -1,4 +1,5 @@
-import { Image, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Text, View } from 'react-native';
 
 interface AvatarProps {
   uri?: string | null;
@@ -19,7 +20,7 @@ export function Avatar({ uri, name, size = 40 }: AvatarProps) {
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
 
   if (uri) {
-    return <Image source={{ uri }} style={dimensionStyle} />;
+    return <Image source={{ uri }} style={dimensionStyle} contentFit="cover" transition={150} accessibilityLabel={name ? `${name}'s avatar` : 'Avatar'} />;
   }
 
   return (

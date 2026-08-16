@@ -11,7 +11,8 @@ interface ButtonProps extends PressableProps {
 
 const variantStyles: Record<Variant, { container: string; label: string }> = {
   primary: { container: 'bg-primary', label: 'text-white' },
-  secondary: { container: 'bg-accent', label: 'text-white' },
+  // White text on the light-green accent fails WCAG AA contrast (~2.5:1) — dark text clears 6.8:1.
+  secondary: { container: 'bg-accent', label: 'text-text' },
   outline: { container: 'bg-transparent border border-border', label: 'text-text' },
   ghost: { container: 'bg-transparent', label: 'text-primary' },
 };
@@ -37,7 +38,7 @@ export function Button({
       {...rest}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? '#1B4332' : '#FFFFFF'} />
+        <ActivityIndicator color={variant === 'primary' ? '#FFFFFF' : '#1B4332'} />
       ) : (
         <>
           {icon}

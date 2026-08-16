@@ -4,12 +4,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExtractionLimitError, extractRecipe } from '@/lib/api/extract';
 import { deleteRecipe, getRecipeById, getRecipes, updateRecipe } from '@/lib/api/recipes';
 import { useAuth } from '@/hooks/useAuth';
+import { haptics } from '@/lib/haptics';
 import { useExtractionStore } from '@/stores/extractionStore';
 import { usePaywallStore } from '@/stores/paywallStore';
 import { useUndoStore } from '@/stores/undoStore';
 import type { Database, Recipe } from '@/lib/database.types';
 
 type RecipeUpdate = Database['public']['Tables']['recipes']['Update'];
+
+const RECIPE_STALE_TIME = 1000 * 60 * 5;
 
 export function useRecipes() {
   const { session } = useAuth();
@@ -19,6 +22,7 @@ export function useRecipes() {
     queryKey: ['recipes', userId],
     queryFn: () => getRecipes(userId!),
     enabled: !!userId,
+    staleTime: RECIPE_STALE_TIME,
   });
 }
 
@@ -27,6 +31,7 @@ export function useRecipe(id: string | undefined) {
     queryKey: ['recipe', id],
     queryFn: () => getRecipeById(id!),
     enabled: !!id,
+    staleTime: RECIPE_STALE_TIME,
   });
 }
 
@@ -60,14 +65,17 @@ export function useExtractRecipe() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      haptics.success();
       reset();
     },
     onError: (error: Error) => {
       if (error instanceof ExtractionLimitError) {
+        haptics.warning();
         reset();
         usePaywallStore.getState().open('extraction_limit');
         return;
       }
+      haptics.error();
       setError(error.message);
     },
   });

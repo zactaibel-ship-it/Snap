@@ -5,6 +5,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 
 import { useAuth } from '@/hooks/useAuth';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
 
 Notifications.setNotificationHandler({
@@ -71,7 +72,7 @@ export function usePushNotifications() {
         return requestAndRegisterPushNotifications(userId);
       })
       .catch((error) => {
-        console.warn('Failed to register for push notifications', error);
+        logger.warn('Failed to register for push notifications', error);
       });
 
     return () => {

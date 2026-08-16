@@ -6,6 +6,7 @@ import { PACKAGE_TYPE, type PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { usePurchases } from '@/hooks/usePurchases';
+import { haptics } from '@/lib/haptics';
 import { usePaywallStore } from '@/stores/paywallStore';
 import { useToastStore } from '@/stores/toastStore';
 
@@ -60,12 +61,14 @@ export function PaywallSheet() {
     try {
       const isNowPro = await purchasePackage(pkg);
       if (isNowPro) {
+        haptics.success();
         showToast('Welcome to Snip Pro!');
         close();
       }
     } catch (error) {
       const userCancelled = (error as { userCancelled?: boolean })?.userCancelled;
       if (!userCancelled) {
+        haptics.error();
         showToast("Purchase couldn't be completed. Please try again.");
       }
     } finally {
@@ -123,7 +126,13 @@ export function PaywallSheet() {
                 style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
               >
                 <Pressable
-                  onPress={() => setSelectedPlan('monthly')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Monthly plan"
+                  accessibilityState={{ selected: selectedPlan === 'monthly' }}
+                  onPress={() => {
+                    haptics.selection();
+                    setSelectedPlan('monthly');
+                  }}
                   className="flex-1 items-center rounded-xl py-3"
                   style={{ backgroundColor: selectedPlan === 'monthly' ? CREAM : 'transparent' }}
                 >
@@ -143,7 +152,13 @@ export function PaywallSheet() {
                   )}
                 </Pressable>
                 <Pressable
-                  onPress={() => setSelectedPlan('yearly')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Yearly plan"
+                  accessibilityState={{ selected: selectedPlan === 'yearly' }}
+                  onPress={() => {
+                    haptics.selection();
+                    setSelectedPlan('yearly');
+                  }}
                   className="flex-1 items-center rounded-xl py-3"
                   style={{ backgroundColor: selectedPlan === 'yearly' ? CREAM : 'transparent' }}
                 >

@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, Share, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, Share, Text, TextInput, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,25 +10,34 @@ import { FilterSheet } from '@/components/recipe/FilterSheet';
 import { RecipeCard } from '@/components/recipe/RecipeCard';
 import { ActionSheet } from '@/components/ui/ActionSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonCard } from '@/components/ui/Skeleton';
+import { NetworkError } from '@/components/ui/NetworkError';
+import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
+import { RecipeGridSkeleton } from '@/components/ui/Skeleton';
 import { useDeleteRecipeWithUndo, useRecipes } from '@/hooks/useRecipes';
 import { useAddRecipeToShoppingList } from '@/hooks/useShoppingList';
+import { haptics } from '@/lib/haptics';
 import { applyRecipeFiltersAndSearch, countActiveFilters, DEFAULT_FILTERS, type RecipeFilters } from '@/lib/recipeFilters';
 import { formatTagLabel } from '@/constants/recipeTags';
 import { useOnboardingTooltipStore } from '@/stores/onboardingTooltipStore';
 import type { Recipe } from '@/lib/database.types';
 
 const TAB_BAR_CLEARANCE = 72;
+const SEARCH_DEBOUNCE_MS = 300;
+const PAGE_SIZE = 20;
+
+export { RouteErrorFallback as ErrorBoundary };
 
 type ViewMode = 'grid' | 'list';
 
 export default function HomeScreen() {
-  const { data: recipes, isLoading, isRefetching, refetch } = useRecipes();
+  const { data: recipes, isLoading, isError, isRefetching, refetch } = useRecipes();
   const insets = useSafeAreaInsets();
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filters, setFilters] = useState<RecipeFilters>(DEFAULT_FILTERS);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
@@ -40,10 +50,26 @@ export default function HomeScreen() {
   const shouldShowFabTooltip = useOnboardingTooltipStore((state) => state.shouldShowFabTooltip);
   const dismissFabTooltip = useOnboardingTooltipStore((state) => state.dismissFabTooltip);
 
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
   const visibleRecipes = useMemo(
-    () => applyRecipeFiltersAndSearch(recipes ?? [], search, filters),
-    [recipes, search, filters]
+    () => applyRecipeFiltersAndSearch(recipes ?? [], debouncedSearch, filters),
+    [recipes, debouncedSearch, filters]
   );
+
+  // Reset pagination whenever the underlying result set changes shape.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [debouncedSearch, filters]);
+
+  const pagedRecipes = useMemo(() => visibleRecipes.slice(0, visibleCount), [visibleRecipes, visibleCount]);
+
+  const handleEndReached = () => {
+    setVisibleCount((current) => Math.min(current + PAGE_SIZE, visibleRecipes.length));
+  };
 
   const activeFilterCount = countActiveFilters(filters);
   const hasAnyRecipes = (recipes?.length ?? 0) > 0;
@@ -108,8 +134,11 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-            onPress={() => setViewMode((current) => (current === 'grid' ? 'list' : 'grid'))}
-            className="h-10 w-10 items-center justify-center rounded-full bg-surface"
+            onPress={() => {
+              haptics.selection();
+              setViewMode((current) => (current === 'grid' ? 'list' : 'grid'));
+            }}
+            className="h-11 w-11 items-center justify-center rounded-full bg-surface"
           >
             <Ionicons name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'} size={20} color="#1C1C1E" />
           </Pressable>
@@ -129,6 +158,7 @@ export default function HomeScreen() {
                 className="h-11 flex-1 text-sm text-text"
                 autoCapitalize="none"
                 autoCorrect={false}
+                accessibilityLabel="Search recipes, ingredients, or tags"
               />
               {search ? (
                 <Pressable accessibilityLabel="Clear search" onPress={() => setSearch('')} hitSlop={8}>
@@ -178,31 +208,29 @@ export default function HomeScreen() {
       ) : null}
 
       {isLoading ? (
-        <View className="flex-1 flex-row flex-wrap gap-3 px-5 pt-2">
-          {[1, 2, 3, 4].map((key) => (
-            <View key={key} className="w-[47%]">
-              <SkeletonCard />
-            </View>
-          ))}
-        </View>
+        <RecipeGridSkeleton />
+      ) : isError && !hasAnyRecipes ? (
+        <NetworkError onRetry={refetch} />
       ) : hasAnyRecipes ? (
         visibleRecipes.length > 0 ? (
-          <FlatList
+          <FlashList
             key={viewMode}
-            data={visibleRecipes}
+            data={pagedRecipes}
             keyExtractor={(item) => item.id}
             numColumns={viewMode === 'grid' ? 2 : 1}
-            columnWrapperStyle={viewMode === 'grid' ? { gap: 12, paddingHorizontal: 20 } : undefined}
             contentContainerStyle={{
-              gap: 12,
+              paddingHorizontal: 14,
               paddingTop: 8,
-              paddingHorizontal: viewMode === 'list' ? 20 : undefined,
               paddingBottom: insets.bottom + TAB_BAR_CLEARANCE + 16,
             }}
             refreshing={isRefetching}
             onRefresh={refetch}
+            onEndReached={handleEndReached}
+            onEndReachedThreshold={0.5}
             renderItem={({ item }) => (
-              <RecipeCard recipe={item} layout={viewMode} onLongPress={() => setActionSheetRecipe(item)} />
+              <View style={{ flex: 1, padding: 6 }}>
+                <RecipeCard recipe={item} layout={viewMode} onLongPress={() => setActionSheetRecipe(item)} />
+              </View>
             )}
           />
         ) : (
@@ -218,8 +246,8 @@ export default function HomeScreen() {
         <View className="flex-1 items-center justify-center">
           <EmptyState
             illustration={<Ionicons name="restaurant-outline" size={56} color="#52B788" />}
-            title="No recipes yet"
-            description="Paste your first video link to get started — tap the + button below."
+            title="Your recipe collection is empty"
+            description="Tap + to save your first video recipe."
           />
         </View>
       )}

@@ -122,14 +122,14 @@ export default function CookModeScreen() {
           accessibilityRole="button"
           accessibilityLabel="Exit cook mode"
           onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
+          className="h-11 w-11 items-center justify-center rounded-full bg-white/10"
         >
           <Ionicons name="close" size={22} color="#FFFFFF" />
         </Pressable>
         <Text className="text-sm font-medium text-white/80">
           {isPrepPage ? 'Get ready' : isCompletionPage ? 'All done' : `Step ${pageIndex} of ${steps.length}`}
         </Text>
-        <View className="h-10 w-10" />
+        <View className="h-11 w-11" />
       </View>
 
       <View className="mx-5 mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">

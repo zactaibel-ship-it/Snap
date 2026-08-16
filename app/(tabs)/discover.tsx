@@ -5,7 +5,10 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreatorCard } from '@/components/creator/CreatorCard';
-import { SkeletonCard } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { NetworkError } from '@/components/ui/NetworkError';
+import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
+import { CreatorListSkeleton } from '@/components/ui/Skeleton';
 import {
   CreatorLimitError,
   useFollowCreator,
@@ -16,19 +19,29 @@ import {
 } from '@/hooks/useCreators';
 import type { YouTubeChannelInfo } from '@/lib/api/creators';
 
+const SEARCH_DEBOUNCE_MS = 300;
+
+export { RouteErrorFallback as ErrorBoundary };
+
 export default function DiscoverScreen() {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
   useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedQuery(searchInput), 400);
+    const timeout = setTimeout(() => setDebouncedQuery(searchInput), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
   }, [searchInput]);
 
   const isSearching = debouncedQuery.trim().length >= 2;
 
-  const { data: followedCreators, isLoading: isFollowedLoading } = useFollowedCreators();
-  const { data: suggested, isLoading: isSuggestedLoading } = useSuggestedCreators();
+  const {
+    data: followedCreators,
+    isLoading: isFollowedLoading,
+    isError: isFollowedError,
+    refetch: refetchFollowed,
+  } = useFollowedCreators();
+  const { data: suggested, isLoading: isSuggestedLoading, isError: isSuggestedError, refetch: refetchSuggested } =
+    useSuggestedCreators();
   const { data: searchResults, isLoading: isSearchLoading } = useSearchCreators(debouncedQuery);
 
   const followCreator = useFollowCreator();
@@ -97,6 +110,7 @@ export default function DiscoverScreen() {
             className="h-11 flex-1 text-sm text-text"
             autoCapitalize="none"
             autoCorrect={false}
+            accessibilityLabel="Search for a creator or paste their channel URL"
           />
           {searchInput ? (
             <Pressable accessibilityLabel="Clear search" onPress={() => setSearchInput('')} hitSlop={8}>
@@ -111,9 +125,7 @@ export default function DiscoverScreen() {
           <View className="gap-2">
             <Text className="text-sm font-semibold uppercase text-text-muted">Search results</Text>
             {isSearchLoading ? (
-              <View className="gap-2">
-                <SkeletonCard />
-              </View>
+              <CreatorListSkeleton count={3} />
             ) : searchResults && searchResults.length > 0 ? (
               <View className="gap-2">
                 {searchResults.map((channel) => {
@@ -141,7 +153,11 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            {isFollowedLoading ? null : (followedCreators?.length ?? 0) > 0 ? (
+            {isFollowedLoading ? (
+              <CreatorListSkeleton count={2} />
+            ) : isFollowedError ? (
+              <NetworkError onRetry={refetchFollowed} message="We couldn't load who you're following." />
+            ) : (followedCreators?.length ?? 0) > 0 ? (
               <View className="gap-2">
                 <Text className="text-sm font-semibold uppercase text-text-muted">Following</Text>
                 <View className="gap-2">
@@ -160,12 +176,20 @@ export default function DiscoverScreen() {
                   ))}
                 </View>
               </View>
-            ) : null}
+            ) : (
+              <EmptyState
+                illustration={<Ionicons name="people-outline" size={48} color="#52B788" />}
+                title="Discover creators"
+                description="Follow your favourite cooking creators to auto-import their recipes."
+              />
+            )}
 
             <View className="gap-2">
               <Text className="text-sm font-semibold uppercase text-text-muted">Suggested</Text>
               {isSuggestedLoading ? (
-                <SkeletonCard />
+                <CreatorListSkeleton count={3} />
+              ) : isSuggestedError ? (
+                <NetworkError onRetry={refetchSuggested} message="We couldn't load suggested creators." />
               ) : (
                 <View className="gap-2">
                   {suggestedToShow.map(({ seed, stats }) => (

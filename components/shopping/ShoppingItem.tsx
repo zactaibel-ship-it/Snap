@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
+import { haptics } from '@/lib/haptics';
 import { formatQuantity } from '@/lib/scaling';
 import type { Recipe, ShoppingListItem } from '@/lib/database.types';
 
@@ -47,8 +48,13 @@ export function ShoppingItem({ item, recipesById, onToggle, onDelete }: Shopping
       <View className="flex-row items-center gap-3 bg-surface px-4 py-3">
         <Pressable
           accessibilityRole="checkbox"
+          accessibilityLabel={item.ingredient_name}
           accessibilityState={{ checked: item.checked }}
-          onPress={onToggle}
+          onPress={() => {
+            haptics.selection();
+            onToggle();
+          }}
+          hitSlop={10}
           className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
             item.checked ? 'border-primary bg-primary' : 'border-border'
           }`}

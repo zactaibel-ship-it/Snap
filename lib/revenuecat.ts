@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 
+import { logger } from '@/lib/logger';
+
 export const PRO_ENTITLEMENT_ID = 'pro';
 
 export const REVENUECAT_PRODUCT_IDS = {
@@ -17,7 +19,7 @@ export function configureRevenueCat(appUserId?: string): void {
 
   const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
   if (!apiKey) {
-    console.warn('EXPO_PUBLIC_REVENUECAT_IOS_KEY is not set — Pro purchases are disabled.');
+    logger.warn('EXPO_PUBLIC_REVENUECAT_IOS_KEY is not set — Pro purchases are disabled.');
     return;
   }
 

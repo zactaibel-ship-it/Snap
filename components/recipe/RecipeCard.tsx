@@ -1,7 +1,9 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 
+import { haptics } from '@/lib/haptics';
 import type { Recipe, VideoPlatform } from '@/lib/database.types';
 
 const PLATFORM_ICONS: Record<VideoPlatform, keyof typeof Ionicons.glyphMap> = {
@@ -28,7 +30,13 @@ export function RecipeCard({ recipe, layout = 'grid', onLongPress }: RecipeCardP
   const totalTime = (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
   const thumbnail = recipe.thumbnail_url ? (
-    <Image source={{ uri: recipe.thumbnail_url }} className="h-full w-full" resizeMode="cover" />
+    <Image
+      source={{ uri: recipe.thumbnail_url }}
+      style={{ width: '100%', height: '100%' }}
+      contentFit="cover"
+      transition={150}
+      accessibilityIgnoresInvertColors
+    />
   ) : (
     <View className="h-full w-full items-center justify-center">
       <Ionicons name="restaurant-outline" size={layout === 'grid' ? 28 : 22} color="#6B7280" />
@@ -45,7 +53,10 @@ export function RecipeCard({ recipe, layout = 'grid', onLongPress }: RecipeCardP
     return (
       <Link href={`/recipe/${recipe.id}`} asChild>
         <Pressable
+          onPressIn={haptics.selection}
           onLongPress={onLongPress}
+          accessibilityRole="button"
+          accessibilityLabel={`Open recipe: ${recipe.title}`}
           className="flex-row items-center gap-3 overflow-hidden rounded-3xl bg-surface p-2"
           style={cardShadow}
         >
@@ -79,7 +90,10 @@ export function RecipeCard({ recipe, layout = 'grid', onLongPress }: RecipeCardP
   return (
     <Link href={`/recipe/${recipe.id}`} asChild>
       <Pressable
+        onPressIn={haptics.selection}
         onLongPress={onLongPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Open recipe: ${recipe.title}`}
         className="flex-1 overflow-hidden rounded-3xl bg-surface"
         style={cardShadow}
       >

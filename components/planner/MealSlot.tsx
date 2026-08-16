@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
-import { Image, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS, type SharedValue } from 'react-native-reanimated';
 
@@ -83,9 +84,15 @@ export const MealSlot = forwardRef<View, MealSlotProps>(function MealSlot(
   return (
     <View ref={ref} onLayout={onLayoutCell} className="aspect-square flex-1 overflow-hidden rounded-lg bg-border">
       <GestureDetector gesture={gesture}>
-        <View className={`h-full w-full ${isDragSource ? 'opacity-30' : ''}`}>
+        <View
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={`${recipe.title}, ${MEAL_TYPE_LABELS[mealType]}`}
+          accessibilityHint="Double tap to view recipe. Long-press and drag to move."
+          className={`h-full w-full ${isDragSource ? 'opacity-30' : ''}`}
+        >
           {recipe.thumbnail_url ? (
-            <Image source={{ uri: recipe.thumbnail_url }} className="h-full w-full" resizeMode="cover" />
+            <Image source={{ uri: recipe.thumbnail_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} />
           ) : (
             <View className="h-full w-full items-center justify-center bg-primary/10">
               <Ionicons name="restaurant-outline" size={13} color="#1B4332" />

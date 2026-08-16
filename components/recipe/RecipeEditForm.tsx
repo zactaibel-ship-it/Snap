@@ -125,11 +125,23 @@ export function RecipeEditForm({ recipe, onCancel, onSaved, onDelete }: RecipeEd
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
-        <Pressable onPress={onCancel} disabled={updateRecipe.isPending}>
+        <Pressable
+          onPress={onCancel}
+          disabled={updateRecipe.isPending}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel editing"
+          accessibilityState={{ disabled: updateRecipe.isPending }}
+        >
           <Text className="text-base text-text-muted">Cancel</Text>
         </Pressable>
         <Text className="text-base font-bold text-text">Edit recipe</Text>
-        <Pressable onPress={handleSave} disabled={updateRecipe.isPending}>
+        <Pressable
+          onPress={handleSave}
+          disabled={updateRecipe.isPending}
+          accessibilityRole="button"
+          accessibilityLabel="Save recipe"
+          accessibilityState={{ disabled: updateRecipe.isPending, busy: updateRecipe.isPending }}
+        >
           <Text className="text-base font-bold text-primary">{updateRecipe.isPending ? 'Saving...' : 'Save'}</Text>
         </Pressable>
       </View>
@@ -168,6 +180,9 @@ export function RecipeEditForm({ recipe, onCancel, onSaved, onDelete }: RecipeEd
                 <Pressable
                   key={tag}
                   onPress={() => toggleDietaryTag(tag)}
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={formatTagLabel(tag)}
+                  accessibilityState={{ checked: selected }}
                   className={`rounded-2xl border px-3.5 py-2 ${
                     selected ? 'border-primary bg-primary' : 'border-border bg-surface'
                   }`}
@@ -208,7 +223,12 @@ export function RecipeEditForm({ recipe, onCancel, onSaved, onDelete }: RecipeEd
                   placeholderTextColor="#6B7280"
                   className="h-11 flex-1 rounded-xl border border-border bg-surface px-3 text-sm text-text"
                 />
-                <Pressable accessibilityLabel="Remove ingredient" onPress={() => removeIngredient(index)} hitSlop={8}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove ingredient"
+                  onPress={() => removeIngredient(index)}
+                  hitSlop={11}
+                >
                   <Ionicons name="close-circle" size={22} color="#EF4444" />
                 </Pressable>
               </View>
@@ -231,7 +251,13 @@ export function RecipeEditForm({ recipe, onCancel, onSaved, onDelete }: RecipeEd
                   multiline
                   className="min-h-[44px] flex-1 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
                 />
-                <Pressable accessibilityLabel="Remove step" onPress={() => removeStep(index)} hitSlop={8} className="mt-2">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove step"
+                  onPress={() => removeStep(index)}
+                  hitSlop={11}
+                  className="mt-2"
+                >
                   <Ionicons name="close-circle" size={22} color="#EF4444" />
                 </Pressable>
               </View>

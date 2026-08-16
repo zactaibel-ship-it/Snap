@@ -10,7 +10,9 @@ import { RetailerCheckoutSheet } from '@/components/shopping/RetailerCheckoutShe
 import { ShoppingItem } from '@/components/shopping/ShoppingItem';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonCard } from '@/components/ui/Skeleton';
+import { NetworkError } from '@/components/ui/NetworkError';
+import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
+import { MealPlanSkeleton, ShoppingListSkeleton } from '@/components/ui/Skeleton';
 import { AISLE_GROUPS, getAisleGroup } from '@/constants/aisleGroups';
 import { usePurchases } from '@/hooks/usePurchases';
 import { useRecipes } from '@/hooks/useRecipes';
@@ -22,11 +24,14 @@ import {
   useWeekPlan,
 } from '@/hooks/usePlanner';
 import { useClearCompletedItems, useDeleteShoppingListItem, useShoppingListItems, useToggleShoppingItem } from '@/hooks/useShoppingList';
+import { haptics } from '@/lib/haptics';
 import { formatWeekRangeLabel, getMondayOfWeek } from '@/lib/api/planner';
 import { usePaywallStore } from '@/stores/paywallStore';
 import { useToastStore } from '@/stores/toastStore';
 import type { MealPlanSlot, MealType, Recipe } from '@/lib/database.types';
 import type { Retailer } from '@/lib/retailerLinks';
+
+export { RouteErrorFallback as ErrorBoundary };
 
 type PlannerTab = 'week' | 'shopping';
 
@@ -54,9 +59,26 @@ export default function PlannerScreen() {
     setWeekStartDate(nextWeekStartDate);
   };
 
-  const { data: mealPlan } = useWeekPlan(weekStartDate);
-  const { data: slots } = useMealPlanSlots(mealPlan?.id);
+  const {
+    data: mealPlan,
+    isLoading: isMealPlanLoading,
+    isError: isMealPlanError,
+    refetch: refetchMealPlan,
+  } = useWeekPlan(weekStartDate);
+  const {
+    data: slots,
+    isLoading: isSlotsLoading,
+    isError: isSlotsError,
+    refetch: refetchSlots,
+  } = useMealPlanSlots(mealPlan?.id);
   const { data: recipes } = useRecipes();
+
+  const isWeekLoading = isMealPlanLoading || (!!mealPlan?.id && isSlotsLoading);
+  const isWeekError = isMealPlanError || isSlotsError;
+  const refetchWeek = () => {
+    refetchMealPlan();
+    refetchSlots();
+  };
 
   const addRecipeToSlot = useAddRecipeToSlot(mealPlan?.id);
   const fillWeek = useFillWeek(mealPlan?.id);
@@ -121,6 +143,9 @@ export default function PlannerScreen() {
           onGenerateShoppingList={handleGenerateShoppingList}
           isGeneratingShoppingList={generateShoppingList.isPending}
           bottomInset={insets.bottom}
+          isLoading={isWeekLoading}
+          isError={isWeekError}
+          onRetry={refetchWeek}
         />
       ) : (
         <ShoppingListView recipesById={recipesById} bottomInset={insets.bottom} />
@@ -159,6 +184,9 @@ interface ThisWeekViewProps {
   onGenerateShoppingList: () => void;
   isGeneratingShoppingList: boolean;
   bottomInset: number;
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
 }
 
 function ThisWeekView({
@@ -173,29 +201,68 @@ function ThisWeekView({
   onGenerateShoppingList,
   isGeneratingShoppingList,
   bottomInset,
+  isLoading,
+  isError,
+  onRetry,
 }: ThisWeekViewProps) {
   const hasFilledSlots = (slots?.length ?? 0) > 0;
+
+  if (isLoading) {
+    return (
+      <View className="flex-1">
+        <View className="px-5 pt-2">
+          <View className="flex-row items-center justify-between pb-4">
+            <View className="h-11 w-11" />
+            <Text className="text-sm font-semibold text-text">{formatWeekRangeLabel(weekStartDate)}</Text>
+            <View className="h-11 w-11" />
+          </View>
+        </View>
+        <MealPlanSkeleton />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return <NetworkError onRetry={onRetry} message="We couldn't load your meal plan." />;
+  }
 
   return (
     <View className="flex-1">
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 16 }}>
         <View className="flex-row items-center justify-between">
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Previous week"
-            onPress={() => onChangeWeek(addWeeks(weekStartDate, -1))}
-            className="h-9 w-9 items-center justify-center rounded-full bg-surface"
+            onPress={() => {
+              haptics.selection();
+              onChangeWeek(addWeeks(weekStartDate, -1));
+            }}
+            className="h-11 w-11 items-center justify-center rounded-full bg-surface"
           >
             <Ionicons name="chevron-back" size={18} color="#1C1C1E" />
           </Pressable>
           <Text className="text-sm font-semibold text-text">{formatWeekRangeLabel(weekStartDate)}</Text>
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Next week"
-            onPress={() => onChangeWeek(addWeeks(weekStartDate, 1))}
-            className="h-9 w-9 items-center justify-center rounded-full bg-surface"
+            onPress={() => {
+              haptics.selection();
+              onChangeWeek(addWeeks(weekStartDate, 1));
+            }}
+            className="h-11 w-11 items-center justify-center rounded-full bg-surface"
           >
             <Ionicons name="chevron-forward" size={18} color="#1C1C1E" />
           </Pressable>
         </View>
+
+        {!hasFilledSlots ? (
+          <View className="flex-row items-center gap-3 rounded-2xl bg-primary/5 px-4 py-3">
+            <Ionicons name="calendar-outline" size={20} color="#1B4332" />
+            <Text className="flex-1 text-sm text-text">
+              Plan your meals for the week. Tap any slot to add a recipe.
+            </Text>
+          </View>
+        ) : null}
 
         <Button
           label="Fill My Week"
@@ -233,7 +300,7 @@ interface ShoppingListViewProps {
 }
 
 function ShoppingListView({ recipesById, bottomInset }: ShoppingListViewProps) {
-  const { data: items, isLoading } = useShoppingListItems();
+  const { data: items, isLoading, isError, refetch } = useShoppingListItems();
   const toggleItem = useToggleShoppingItem();
   const deleteItem = useDeleteShoppingListItem();
   const clearCompleted = useClearCompletedItems();
@@ -284,13 +351,15 @@ function ShoppingListView({ recipesById, bottomInset }: ShoppingListViewProps) {
         </View>
         <View className="flex-row items-center gap-3">
           {checkedCount > 0 ? (
-            <Pressable onPress={() => clearCompleted.mutate()}>
+            <Pressable accessibilityRole="button" hitSlop={10} onPress={() => clearCompleted.mutate()}>
               <Text className="text-xs font-semibold text-primary">Clear completed</Text>
             </Pressable>
           ) : null}
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Add item"
             onPress={() => setIsAddSheetOpen(true)}
+            hitSlop={8}
             className="h-8 w-8 items-center justify-center rounded-full bg-primary"
           >
             <Ionicons name="add" size={18} color="#FFFFFF" />
@@ -299,15 +368,15 @@ function ShoppingListView({ recipesById, bottomInset }: ShoppingListViewProps) {
       </View>
 
       {isLoading ? (
-        <View className="gap-3 px-5">
-          <SkeletonCard />
-        </View>
+        <ShoppingListSkeleton />
+      ) : isError ? (
+        <NetworkError onRetry={refetch} message="We couldn't load your shopping list." />
       ) : !items || items.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <EmptyState
             illustration={<Ionicons name="cart-outline" size={48} color="#52B788" />}
             title="Your list is empty"
-            description="Generate a shopping list from your meal plan, or add items yourself."
+            description="Generate a shopping list from your meal plan, or add items manually."
           />
         </View>
       ) : (
@@ -317,8 +386,10 @@ function ShoppingListView({ recipesById, bottomInset }: ShoppingListViewProps) {
             return (
               <View key={group}>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${collapsed ? 'Expand' : 'Collapse'} ${group} section`}
                   onPress={() => toggleGroupCollapsed(group)}
-                  className="flex-row items-center justify-between bg-background px-5 py-2"
+                  className="min-h-[44px] flex-row items-center justify-between bg-background px-5 py-2"
                 >
                   <Text className="text-xs font-semibold uppercase text-text-muted">
                     {group} ({groupItems.length})
@@ -344,8 +415,13 @@ function ShoppingListView({ recipesById, bottomInset }: ShoppingListViewProps) {
 
       <View className="flex-row gap-3 border-t border-border bg-surface px-5 pt-3" style={{ paddingBottom: bottomInset + 12 }}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isPro ? 'Shop on Tesco' : 'Shop on Tesco (Snip Pro required)'}
           className="flex-1"
-          onPress={() => (isPro ? setCheckoutRetailer('tesco') : openPaywall('retailer_checkout'))}
+          onPress={() => {
+            haptics.selection();
+            isPro ? setCheckoutRetailer('tesco') : openPaywall('retailer_checkout');
+          }}
         >
           <View className="min-h-[48px] items-center justify-center rounded-2xl bg-[#00539F]" style={!isPro ? { opacity: 0.4 } : undefined}>
             <Text className="text-base font-semibold text-white">Shop on Tesco</Text>
@@ -357,8 +433,13 @@ function ShoppingListView({ recipesById, bottomInset }: ShoppingListViewProps) {
           )}
         </Pressable>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isPro ? "Shop on Sainsbury's" : "Shop on Sainsbury's (Snip Pro required)"}
           className="flex-1"
-          onPress={() => (isPro ? setCheckoutRetailer('sainsburys') : openPaywall('retailer_checkout'))}
+          onPress={() => {
+            haptics.selection();
+            isPro ? setCheckoutRetailer('sainsburys') : openPaywall('retailer_checkout');
+          }}
         >
           <View className="min-h-[48px] items-center justify-center rounded-2xl bg-[#FF8200]" style={!isPro ? { opacity: 0.4 } : undefined}>
             <Text className="text-base font-semibold text-white">Shop on Sainsbury&apos;s</Text>

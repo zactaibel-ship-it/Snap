@@ -16,7 +16,13 @@ export function IngredientRow({ ingredient, checked = false, onToggle }: Ingredi
     .join(' ');
 
   return (
-    <Pressable onPress={onToggle} className="flex-row items-center gap-3 border-b border-border py-3">
+    <Pressable
+      onPress={onToggle}
+      accessibilityRole="checkbox"
+      accessibilityLabel={ingredient.name}
+      accessibilityState={{ checked }}
+      className="flex-row items-center gap-3 border-b border-border py-3"
+    >
       <View
         className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
           checked ? 'border-primary bg-primary' : 'border-border'

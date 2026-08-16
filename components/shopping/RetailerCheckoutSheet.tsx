@@ -51,7 +51,12 @@ export function RetailerCheckoutSheet({ visible, onClose, retailer, items }: Ret
             <Text className="flex-1 text-xs leading-4 text-primary">
               Heads up: we may earn a small commission from purchases — it helps keep Snip free.
             </Text>
-            <Pressable accessibilityLabel="Dismiss" onPress={dismissDisclosure} hitSlop={8}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss affiliate disclosure"
+              onPress={dismissDisclosure}
+              hitSlop={14}
+            >
               <Ionicons name="close" size={16} color="#1B4332" />
             </Pressable>
           </View>
@@ -67,6 +72,8 @@ export function RetailerCheckoutSheet({ visible, onClose, retailer, items }: Ret
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => openItem(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Search for ${item.ingredient_name} on ${label}`}
                 className="flex-row items-center justify-between border-b border-border py-3"
               >
                 <View className="flex-1 pr-3">

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
+import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
 import { Sheet } from '@/components/ui/Sheet';
 import { DIETARY_PREFERENCE_OPTIONS, SUPERMARKET_OPTIONS } from '@/constants/dietaryPreferences';
 import { FREE_EXTRACTION_LIMIT, getEffectiveExtractionCount } from '@/constants/limits';
@@ -21,6 +22,8 @@ import {
 import { usePurchases } from '@/hooks/usePurchases';
 import { usePaywallStore } from '@/stores/paywallStore';
 import type { SupermarketPreference } from '@/lib/database.types';
+
+export { RouteErrorFallback as ErrorBoundary };
 
 export default function ProfileScreen() {
   const { profile, session, signOut } = useAuth();
@@ -113,7 +116,13 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24, gap: 16 }}>
         <Card className="flex-row items-center gap-4">
-          <Pressable onPress={handleAvatarPress} disabled={updateAvatar.isPending}>
+          <Pressable
+            onPress={handleAvatarPress}
+            disabled={updateAvatar.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile photo"
+            accessibilityState={{ disabled: updateAvatar.isPending }}
+          >
             {updateAvatar.isPending ? (
               <View className="h-14 w-14 items-center justify-center rounded-full bg-border/40">
                 <ActivityIndicator color="#1B4332" />
@@ -133,7 +142,13 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        <Pressable onPress={() => !isPro && openPaywall('manual')} disabled={isPro}>
+        <Pressable
+          onPress={() => !isPro && openPaywall('manual')}
+          disabled={isPro}
+          accessibilityRole="button"
+          accessibilityLabel={isPro ? 'Snip Pro' : 'Upgrade to Snip Pro'}
+          accessibilityState={{ disabled: isPro }}
+        >
           <Card className="bg-primary">
             <View className="flex-row items-center justify-between">
               <View className="gap-0.5">
@@ -199,6 +214,8 @@ export default function ProfileScreen() {
               onValueChange={handleToggleNotifications}
               disabled={toggleNotifications.isPending}
               trackColor={{ true: '#1B4332' }}
+              accessibilityLabel="Notifications"
+              accessibilityRole="switch"
             />
           </View>
           <Divider />
@@ -273,6 +290,9 @@ function SettingsRow({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${label}, ${value}` : label}
+      accessibilityState={{ disabled: !!disabled }}
       className="flex-row items-center justify-between py-3"
       style={disabled ? { opacity: 0.5 } : undefined}
     >
@@ -313,6 +333,9 @@ function DietaryEditSheet({
               <Pressable
                 key={option.value}
                 onPress={() => toggle(option.value)}
+                accessibilityRole="checkbox"
+                accessibilityLabel={option.label}
+                accessibilityState={{ checked: isSelected }}
                 className={`rounded-2xl border px-4 py-2.5 ${isSelected ? 'border-primary bg-primary' : 'border-border bg-surface'}`}
               >
                 <Text className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-text'}`}>{option.label}</Text>
@@ -320,7 +343,12 @@ function DietaryEditSheet({
             );
           })}
         </View>
-        <Pressable className="items-center rounded-2xl bg-primary py-3.5" onPress={() => onSave(selected)}>
+        <Pressable
+          className="items-center rounded-2xl bg-primary py-3.5"
+          onPress={() => onSave(selected)}
+          accessibilityRole="button"
+          accessibilityLabel="Save dietary preferences"
+        >
           <Text className="text-base font-semibold text-white">Save</Text>
         </Pressable>
       </View>
@@ -350,6 +378,9 @@ function SupermarketPickerSheet({
               <Pressable
                 key={option.value}
                 onPress={() => onSave(option.value)}
+                accessibilityRole="radio"
+                accessibilityLabel={option.label}
+                accessibilityState={{ selected: isSelected }}
                 className={`flex-row items-center justify-between rounded-2xl border px-4 py-3.5 ${
                   isSelected ? 'border-primary bg-primary/5' : 'border-border bg-surface'
                 }`}

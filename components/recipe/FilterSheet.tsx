@@ -50,6 +50,9 @@ function ChipRow<T extends string>({
           <Pressable
             key={option.value}
             onPress={() => onSelect(option.value)}
+            accessibilityRole="button"
+            accessibilityLabel={option.label}
+            accessibilityState={{ selected }}
             className={`rounded-2xl border px-3.5 py-2 ${
               selected ? 'border-primary bg-primary' : 'border-border bg-surface'
             }`}
@@ -75,7 +78,11 @@ export function FilterSheet({ visible, onClose, filters, onChange }: FilterSheet
       <View className="gap-5 pb-2">
         <View className="flex-row items-center justify-between">
           <Text className="text-xl font-bold text-text">Filter & sort</Text>
-          <Pressable onPress={() => onChange(DEFAULT_FILTERS)}>
+          <Pressable
+            onPress={() => onChange(DEFAULT_FILTERS)}
+            accessibilityRole="button"
+            accessibilityLabel="Reset filters"
+          >
             <Text className="text-sm font-semibold text-primary">Reset</Text>
           </Pressable>
         </View>
@@ -100,6 +107,9 @@ export function FilterSheet({ visible, onClose, filters, onChange }: FilterSheet
                     <Pressable
                       key={tag}
                       onPress={() => toggleDietary(tag)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel={formatTagLabel(tag)}
+                      accessibilityState={{ checked: selected }}
                       className={`flex-row items-center gap-1.5 rounded-2xl border px-3.5 py-2 ${
                         selected ? 'border-primary bg-primary' : 'border-border bg-surface'
                       }`}

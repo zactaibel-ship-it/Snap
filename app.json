@@ -10,11 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.oneday.snip",
+      "bundleIdentifier": "com.snip.app",
       "usesAppleSignIn": true
     },
     "android": {
-      "package": "org.oneday.snip",
+      "package": "com.snip.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -28,7 +28,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#F5EFE0"
+        }
+      ],
       "expo-apple-authentication",
       [
         "expo-notifications",

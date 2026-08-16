@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { DIETARY_PREFERENCE_OPTIONS, SUPERMARKET_OPTIONS } from '@/constants/dietaryPreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { requestAndRegisterPushNotifications } from '@/hooks/usePushNotifications';
+import { logger } from '@/lib/logger';
 import { useOnboardingTooltipStore } from '@/stores/onboardingTooltipStore';
 import type { SupermarketPreference } from '@/lib/database.types';
 
@@ -64,7 +65,7 @@ export default function OnboardingScreen() {
       try {
         await requestAndRegisterPushNotifications(session.user.id);
       } catch (error) {
-        console.warn('Failed to enable notifications', error);
+        logger.warn('Failed to enable notifications', error);
       }
     }
     finishOnboarding();
@@ -139,6 +140,9 @@ function DietaryScreen({
               <Pressable
                 key={option.value}
                 onPress={() => onToggle(option.value)}
+                accessibilityRole="checkbox"
+                accessibilityLabel={option.label}
+                accessibilityState={{ checked: isSelected }}
                 className={`rounded-2xl border px-4 py-3 ${
                   isSelected ? 'border-primary bg-primary' : 'border-border bg-surface'
                 }`}
@@ -181,6 +185,9 @@ function SupermarketScreen({
               <Pressable
                 key={option.value}
                 onPress={() => onSelect(option.value)}
+                accessibilityRole="radio"
+                accessibilityLabel={option.label}
+                accessibilityState={{ selected: isSelected }}
                 className={`flex-row items-center justify-between rounded-3xl border-2 px-5 py-6 ${
                   isSelected ? 'border-primary bg-primary/5' : 'border-border bg-surface'
                 }`}
@@ -228,7 +235,13 @@ function NotificationsScreen({
 
       <View className="gap-3">
         <Button label="Enable Notifications" onPress={onEnable} loading={isSubmitting} />
-        <Pressable onPress={onSkip} disabled={isSubmitting} className="items-center py-2">
+        <Pressable
+          onPress={onSkip}
+          disabled={isSubmitting}
+          accessibilityRole="button"
+          accessibilityLabel="Skip notifications"
+          className="items-center py-2"
+        >
           <Text className="text-sm font-medium text-text-muted">Maybe later</Text>
         </Pressable>
       </View>

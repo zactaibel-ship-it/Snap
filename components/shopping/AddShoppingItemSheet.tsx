@@ -63,6 +63,9 @@ export function AddShoppingItemSheet({ visible, onClose }: AddShoppingItemSheetP
                 <Pressable
                   key={group}
                   onPress={() => setAisleGroup(group)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${group} aisle`}
+                  accessibilityState={{ selected }}
                   className={`rounded-2xl border px-3 py-2 ${
                     selected ? 'border-primary bg-primary' : 'border-border bg-surface'
                   }`}

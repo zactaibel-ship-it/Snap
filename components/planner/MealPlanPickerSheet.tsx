@@ -75,6 +75,9 @@ export function MealPlanPickerSheet({ visible, onClose, recipeId }: MealPlanPick
                       <Pressable
                         key={mealType.value}
                         onPress={() => setSelected({ day: day.value, mealType: mealType.value })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${day.label} ${mealType.label}${filled ? ', already planned' : ''}`}
+                        accessibilityState={{ selected: isSelected }}
                         className={`flex-1 items-center rounded-2xl border px-2 py-2.5 ${
                           isSelected
                             ? 'border-primary bg-primary'

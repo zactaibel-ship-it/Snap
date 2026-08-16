@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,9 +13,11 @@ import { StepRow } from '@/components/recipe/StepRow';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonCard } from '@/components/ui/Skeleton';
+import { NetworkError } from '@/components/ui/NetworkError';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useDeleteRecipeWithUndo, useRecipe } from '@/hooks/useRecipes';
 import { useAddRecipeToShoppingList } from '@/hooks/useShoppingList';
+import { haptics } from '@/lib/haptics';
 import { scaleIngredients } from '@/lib/scaling';
 import { useIngredientCheckStore } from '@/stores/ingredientCheckStore';
 import type { VideoPlatform } from '@/lib/database.types';
@@ -33,7 +36,7 @@ const PLATFORM_ICONS: Record<VideoPlatform, keyof typeof Ionicons.glyphMap> = {
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: recipe, isLoading } = useRecipe(id);
+  const { data: recipe, isLoading, isError, refetch } = useRecipe(id);
   const insets = useSafeAreaInsets();
 
   const [servings, setServings] = useState<number | null>(null);
@@ -75,9 +78,25 @@ export default function RecipeDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <View className="gap-3 p-5">
-          <SkeletonCard />
+        <Skeleton height={288} radius={0} />
+        <View className="gap-4 p-5">
+          <Skeleton height={22} width="80%" />
+          <Skeleton height={14} width="40%" />
+          <Skeleton height={80} radius={24} />
+          <Skeleton height={16} width="30%" />
+          <Skeleton height={14} />
+          <Skeleton height={14} />
+          <Skeleton height={14} width="70%" />
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <Stack.Screen options={{ headerShown: true, title: '' }} />
+        <NetworkError onRetry={refetch} message="We couldn't load this recipe." />
       </SafeAreaView>
     );
   }
@@ -123,7 +142,7 @@ export default function RecipeDetailScreen() {
       <ScrollView bounces={false} contentContainerStyle={{ paddingBottom: 32 }}>
         <View className="h-72 w-full bg-border">
           {recipe.thumbnail_url ? (
-            <Image source={{ uri: recipe.thumbnail_url }} className="h-full w-full" resizeMode="cover" />
+            <Image source={{ uri: recipe.thumbnail_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} />
           ) : (
             <View className="h-full w-full items-center justify-center">
               <Ionicons name="restaurant-outline" size={48} color="#6B7280" />
@@ -143,7 +162,7 @@ export default function RecipeDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel="Go back"
               onPress={() => router.back()}
-              className="h-10 w-10 items-center justify-center rounded-full bg-black/40"
+              className="h-11 w-11 items-center justify-center rounded-full bg-black/40"
             >
               <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
             </Pressable>
@@ -152,7 +171,7 @@ export default function RecipeDetailScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Edit recipe"
                 onPress={() => setIsEditing(true)}
-                className="h-10 w-10 items-center justify-center rounded-full bg-black/40"
+                className="h-11 w-11 items-center justify-center rounded-full bg-black/40"
               >
                 <Ionicons name="pencil" size={18} color="#FFFFFF" />
               </Pressable>
@@ -160,7 +179,7 @@ export default function RecipeDetailScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Share recipe"
                 onPress={() => handleShare(recipe.source_url, recipe.title)}
-                className="h-10 w-10 items-center justify-center rounded-full bg-black/40"
+                className="h-11 w-11 items-center justify-center rounded-full bg-black/40"
               >
                 <Ionicons name="share-outline" size={20} color="#FFFFFF" />
               </Pressable>
@@ -168,7 +187,7 @@ export default function RecipeDetailScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark recipe'}
                 onPress={() => setIsBookmarked((current) => !current)}
-                className="h-10 w-10 items-center justify-center rounded-full bg-black/40"
+                className="h-11 w-11 items-center justify-center rounded-full bg-black/40"
               >
                 <Ionicons name={isBookmarked ? 'bookmark' : 'bookmark-outline'} size={20} color="#FFFFFF" />
               </Pressable>
@@ -217,7 +236,11 @@ export default function RecipeDetailScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Decrease servings"
-                  onPress={() => setServings(Math.max(1, currentServings - 1))}
+                  onPress={() => {
+                    haptics.selection();
+                    setServings(Math.max(1, currentServings - 1));
+                  }}
+                  hitSlop={10}
                   className="h-6 w-6 items-center justify-center rounded-full bg-border"
                 >
                   <Ionicons name="remove" size={14} color="#1C1C1E" />
@@ -226,7 +249,11 @@ export default function RecipeDetailScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Increase servings"
-                  onPress={() => setServings(currentServings + 1)}
+                  onPress={() => {
+                    haptics.selection();
+                    setServings(currentServings + 1);
+                  }}
+                  hitSlop={10}
                   className="h-6 w-6 items-center justify-center rounded-full bg-border"
                 >
                   <Ionicons name="add" size={14} color="#1C1C1E" />

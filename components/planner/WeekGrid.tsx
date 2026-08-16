@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Alert, Image, Modal, Text, View } from 'react-native';
+import { Alert, Modal, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
@@ -173,7 +174,7 @@ export function WeekGrid({ mealPlanId, slots, recipesById, onPressEmptySlot }: W
               ]}
             >
               {dragging.recipe.thumbnail_url ? (
-                <Image source={{ uri: dragging.recipe.thumbnail_url }} style={{ width: '100%', height: '100%' }} />
+                <Image source={{ uri: dragging.recipe.thumbnail_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
               ) : (
                 <View className="h-full w-full items-center justify-center bg-primary/20" />
               )}

@@ -31,6 +31,8 @@ export function ActionSheet({ visible, onClose, title, options }: ActionSheetPro
           <Pressable
             key={option.label}
             onPress={() => handlePress(option)}
+            accessibilityRole="button"
+            accessibilityLabel={option.label}
             className="flex-row items-center gap-3 rounded-2xl px-3 py-3.5 active:bg-background"
           >
             {option.icon ? (

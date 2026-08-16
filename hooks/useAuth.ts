@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
+import { logger } from '@/lib/logger';
 import { loginRevenueCatUser, logoutRevenueCatUser } from '@/lib/revenuecat';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -35,7 +36,7 @@ export function useAuth() {
   useEffect(() => {
     if (session?.user) {
       loginRevenueCatUser(session.user.id).catch((error) =>
-        console.warn('Failed to log in RevenueCat user', error)
+        logger.warn('Failed to log in RevenueCat user', error)
       );
     } else {
       logoutRevenueCatUser();

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import Purchases, { type CustomerInfo, type PurchasesPackage } from 'react-native-purchases';
 
+import { logger } from '@/lib/logger';
 import { PRO_ENTITLEMENT_ID } from '@/lib/revenuecat';
 
 function hasProEntitlement(info: CustomerInfo | null): boolean {
@@ -21,7 +22,7 @@ export function usePurchases() {
       .then((info) => {
         if (!cancelled) setCustomerInfo(info);
       })
-      .catch((error) => console.warn('Failed to load RevenueCat customer info', error))
+      .catch((error) => logger.warn('Failed to load RevenueCat customer info', error))
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });

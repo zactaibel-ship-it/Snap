@@ -1,6 +1,8 @@
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 
+import { haptics } from '@/lib/haptics';
 import type { CreatorPlatform } from '@/lib/database.types';
 
 const PLATFORM_ICONS: Record<CreatorPlatform, keyof typeof Ionicons.glyphMap> = {
@@ -54,7 +56,7 @@ export function CreatorCard({
       >
         <View className="overflow-hidden rounded-full bg-border" style={{ width: 52, height: 52 }}>
           {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} className="h-full w-full" resizeMode="cover" />
+            <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} />
           ) : (
             <View className="h-full w-full items-center justify-center">
               <Ionicons name="person" size={22} color="#6B7280" />
@@ -91,8 +93,11 @@ export function CreatorCard({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={isFollowing ? `Unfollow ${name}` : `Follow ${name}`}
-          onPress={onPressFollow}
-          className={`items-center justify-center rounded-2xl px-3.5 py-2 ${
+          onPress={() => {
+            haptics.selection();
+            onPressFollow?.();
+          }}
+          className={`min-h-[44px] items-center justify-center rounded-2xl px-3.5 py-2 ${
             isFollowing ? 'border border-border bg-surface' : 'bg-primary'
           }`}
         >

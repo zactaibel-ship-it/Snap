@@ -1,0 +1,27 @@
+App Store description (max 4000 chars)
+=======================================
+
+Snip turns any cooking video into a recipe you can actually use.
+
+Paste a link from YouTube, TikTok, or Instagram — Snip's AI extracts a complete recipe in seconds. Ingredients, quantities, steps, cook time. Everything.
+
+SAVE FROM ANYWHERE
+Save recipes from your favourite cooking videos. YouTube tutorials, TikTok viral dishes, Instagram Reels — Snip handles them all.
+
+FOLLOW YOUR FAVOURITE CREATORS
+Subscribe to cooking channels and creators. When they post a new video, Snip automatically saves the recipe to your library. Never miss a dish again.
+
+PLAN YOUR WEEK
+Drag recipes into a weekly meal planner. Mix and match breakfast, lunch, and dinner across the week.
+
+SHOP WITH ONE TAP
+Snip builds your shopping list automatically — ingredients merged, duplicates removed, sorted by aisle. Tap to shop on Tesco or Sainsbury's.
+
+COOK WITH CONFIDENCE
+Cook Mode gives you full-screen, step-by-step instructions with the screen always on. Tap through at your own pace.
+
+Start free. Upgrade to Snip Pro for unlimited extractions and creator follows.
+
+Keywords (100 chars max)
+=========================
+recipe,cooking video,meal planner,shopping list,tiktok recipe,youtube recipe,meal prep,grocery
