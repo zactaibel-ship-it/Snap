@@ -7,14 +7,16 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { MealPlanPickerSheet } from '@/components/planner/MealPlanPickerSheet';
 import { IngredientRow } from '@/components/recipe/IngredientRow';
+import { RecipeEditForm } from '@/components/recipe/RecipeEditForm';
 import { StepRow } from '@/components/recipe/StepRow';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonCard } from '@/components/ui/Skeleton';
-import { useRecipe } from '@/hooks/useRecipes';
+import { useDeleteRecipeWithUndo, useRecipe } from '@/hooks/useRecipes';
 import { useAddRecipeToShoppingList } from '@/hooks/useShoppingList';
 import { scaleIngredients } from '@/lib/scaling';
+import { useIngredientCheckStore } from '@/stores/ingredientCheckStore';
 import type { VideoPlatform } from '@/lib/database.types';
 
 const PLATFORM_LABELS: Record<VideoPlatform, string> = {
@@ -35,11 +37,14 @@ export default function RecipeDetailScreen() {
   const insets = useSafeAreaInsets();
 
   const [servings, setServings] = useState<number | null>(null);
-  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isMealPlanSheetOpen, setIsMealPlanSheetOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const addToShoppingList = useAddRecipeToShoppingList();
+  const deleteRecipeWithUndo = useDeleteRecipeWithUndo();
+  const isIngredientChecked = useIngredientCheckStore((state) => state.isChecked);
+  const toggleIngredientChecked = useIngredientCheckStore((state) => state.toggle);
 
   const currentServings = servings ?? recipe?.servings ?? 1;
 
@@ -47,15 +52,6 @@ export default function RecipeDetailScreen() {
     if (!recipe) return [];
     return scaleIngredients(recipe.ingredients, recipe.servings, currentServings);
   }, [recipe, currentServings]);
-
-  const toggleIngredient = (index: number) => {
-    setCheckedIngredients((current) => {
-      const next = new Set(current);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  };
 
   const handleShare = async (sourceUrl: string, title: string) => {
     try {
@@ -103,6 +99,23 @@ export default function RecipeDetailScreen() {
     );
   }
 
+  if (isEditing) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <RecipeEditForm
+          recipe={recipe}
+          onCancel={() => setIsEditing(false)}
+          onSaved={() => setIsEditing(false)}
+          onDelete={() => {
+            deleteRecipeWithUndo(recipe);
+            router.back();
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
@@ -135,6 +148,14 @@ export default function RecipeDetailScreen() {
               <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
             </Pressable>
             <View className="flex-row gap-2">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Edit recipe"
+                onPress={() => setIsEditing(true)}
+                className="h-10 w-10 items-center justify-center rounded-full bg-black/40"
+              >
+                <Ionicons name="pencil" size={18} color="#FFFFFF" />
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Share recipe"
@@ -230,8 +251,8 @@ export default function RecipeDetailScreen() {
                 <IngredientRow
                   key={`${ingredient.name}-${index}`}
                   ingredient={ingredient}
-                  checked={checkedIngredients.has(index)}
-                  onToggle={() => toggleIngredient(index)}
+                  checked={isIngredientChecked(recipe.id, index)}
+                  onToggle={() => toggleIngredientChecked(recipe.id, index)}
                 />
               ))}
             </View>

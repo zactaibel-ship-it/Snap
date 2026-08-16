@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import type { Recipe } from '@/lib/database.types';
+import type { Database, Recipe } from '@/lib/database.types';
+
+type RecipeUpdate = Database['public']['Tables']['recipes']['Update'];
 
 export async function getRecipes(userId: string): Promise<Recipe[]> {
   const { data, error } = await supabase
@@ -17,4 +19,16 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
 
   if (error) throw error;
   return data;
+}
+
+export async function updateRecipe(id: string, updates: RecipeUpdate): Promise<Recipe> {
+  const { data, error } = await supabase.from('recipes').update(updates).eq('id', id).select('*').single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  const { error } = await supabase.from('recipes').delete().eq('id', id);
+  if (error) throw error;
 }

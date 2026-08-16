@@ -35,6 +35,7 @@ export type Recipe = {
   cook_time_minutes: number | null;
   dietary_tags: string[];
   creator_name: string | null;
+  rating: number | null;
   extracted_at: string;
   created_at: string;
 };
@@ -92,10 +93,11 @@ export type Database = {
       };
       recipes: {
         Row: Recipe;
-        Insert: Omit<Recipe, 'id' | 'created_at' | 'extracted_at'> & {
+        Insert: Omit<Recipe, 'id' | 'created_at' | 'extracted_at' | 'rating'> & {
           id?: string;
           created_at?: string;
           extracted_at?: string;
+          rating?: number | null;
         };
         Update: Partial<Omit<Recipe, 'id'>>;
         Relationships: [];

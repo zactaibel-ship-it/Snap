@@ -1,9 +1,14 @@
+import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { extractRecipe } from '@/lib/api/extract';
-import { getRecipeById, getRecipes } from '@/lib/api/recipes';
+import { deleteRecipe, getRecipeById, getRecipes, updateRecipe } from '@/lib/api/recipes';
 import { useAuth } from '@/hooks/useAuth';
 import { useExtractionStore } from '@/stores/extractionStore';
+import { useUndoStore } from '@/stores/undoStore';
+import type { Database, Recipe } from '@/lib/database.types';
+
+type RecipeUpdate = Database['public']['Tables']['recipes']['Update'];
 
 export function useRecipes() {
   const { session } = useAuth();
@@ -60,4 +65,83 @@ export function useExtractRecipe() {
       setError(error.message);
     },
   });
+}
+
+interface UpdateRecipeContext {
+  previousRecipe: Recipe | null | undefined;
+  previousLists: [readonly unknown[], Recipe[] | undefined][];
+}
+
+export function useUpdateRecipe() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Recipe, Error, { id: string; updates: RecipeUpdate }, UpdateRecipeContext>({
+    mutationFn: ({ id, updates }) => updateRecipe(id, updates),
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['recipe', id] });
+
+      const previousRecipe = queryClient.getQueryData<Recipe | null>(['recipe', id]);
+      const previousLists = queryClient.getQueriesData<Recipe[]>({ queryKey: ['recipes'] });
+
+      if (previousRecipe) {
+        queryClient.setQueryData(['recipe', id], { ...previousRecipe, ...updates });
+      }
+      queryClient.setQueriesData<Recipe[]>({ queryKey: ['recipes'] }, (old) =>
+        old?.map((recipe) => (recipe.id === id ? { ...recipe, ...updates } : recipe))
+      );
+
+      return { previousRecipe, previousLists };
+    },
+    onError: (_error, { id }, context) => {
+      if (!context) return;
+      queryClient.setQueryData(['recipe', id], context.previousRecipe);
+      context.previousLists.forEach(([key, data]) => queryClient.setQueryData(key, data));
+    },
+    onSettled: (_data, _error, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['recipe', id] });
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+    },
+  });
+}
+
+/**
+ * Optimistically removes a recipe and schedules the actual Supabase delete
+ * 5 seconds out via the global undo toast — call the returned function, then
+ * either the user taps Undo (restoring the cache) or the timer commits it.
+ */
+export function useDeleteRecipeWithUndo() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const show = useUndoStore((state) => state.show);
+  const userId = session?.user.id;
+
+  return useCallback(
+    (recipe: Recipe) => {
+      const listKey = ['recipes', userId];
+      queryClient.setQueryData<Recipe[]>(listKey, (old) => old?.filter((item) => item.id !== recipe.id) ?? []);
+      queryClient.setQueryData(['recipe', recipe.id], null);
+
+      show({
+        id: recipe.id,
+        message: 'Recipe deleted',
+        onUndo: () => {
+          queryClient.setQueryData<Recipe[]>(listKey, (old) => {
+            const withoutDuplicate = old?.filter((item) => item.id !== recipe.id) ?? [];
+            return [...withoutDuplicate, recipe].sort((a, b) => b.created_at.localeCompare(a.created_at));
+          });
+          queryClient.setQueryData(['recipe', recipe.id], recipe);
+        },
+        onCommit: async () => {
+          try {
+            await deleteRecipe(recipe.id);
+          } catch {
+            // The delete failed server-side — resync from the server rather
+            // than leave the client believing it succeeded.
+            queryClient.invalidateQueries({ queryKey: ['recipes'] });
+          }
+        },
+      });
+    },
+    [queryClient, show, userId]
+  );
 }
