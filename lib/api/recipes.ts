@@ -21,6 +21,14 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
   return data;
 }
 
+export async function getRecipesByIds(ids: string[]): Promise<Recipe[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from('recipes').select('*').in('id', [...new Set(ids)]);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function updateRecipe(id: string, updates: RecipeUpdate): Promise<Recipe> {
   const { data, error } = await supabase.from('recipes').update(updates).eq('id', id).select('*').single();
 

@@ -3,7 +3,8 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
-import { useAddRecipeToMealPlan, useCurrentWeekPlan, useMealPlanSlots } from '@/hooks/usePlanner';
+import { useAddRecipeToSlot, useMealPlanSlots, useWeekPlan } from '@/hooks/usePlanner';
+import { getCurrentWeekStartDate } from '@/lib/api/planner';
 import type { MealType } from '@/lib/database.types';
 
 const DAYS: { label: string; value: number }[] = [
@@ -29,9 +30,9 @@ interface MealPlanPickerSheetProps {
 }
 
 export function MealPlanPickerSheet({ visible, onClose, recipeId }: MealPlanPickerSheetProps) {
-  const { data: mealPlan } = useCurrentWeekPlan(visible);
+  const { data: mealPlan } = useWeekPlan(getCurrentWeekStartDate(), visible);
   const { data: slots } = useMealPlanSlots(mealPlan?.id);
-  const { mutateAsync, isPending } = useAddRecipeToMealPlan(mealPlan?.id);
+  const { mutateAsync, isPending } = useAddRecipeToSlot(mealPlan?.id);
   const [selected, setSelected] = useState<{ day: number; mealType: MealType } | null>(null);
 
   const isFilled = (day: number, mealType: MealType) =>
