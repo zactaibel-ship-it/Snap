@@ -12,11 +12,21 @@ import {
   unfollowCreator,
   type YouTubeChannelStats,
 } from '@/lib/api/creators';
+import { FREE_CREATOR_FOLLOW_LIMIT } from '@/constants/limits';
 import { SUGGESTED_CREATORS } from '@/constants/suggestedCreators';
 import { useAuth } from '@/hooks/useAuth';
+import { usePurchases } from '@/hooks/usePurchases';
 import { extractChannelRefFromInput } from '@/lib/youtubeChannelRef';
+import { usePaywallStore } from '@/stores/paywallStore';
 import { useToastStore } from '@/stores/toastStore';
 import type { CreatorPlatform, Database } from '@/lib/database.types';
+
+export class CreatorLimitError extends Error {
+  constructor() {
+    super(`You can follow up to ${FREE_CREATOR_FOLLOW_LIMIT} creators on Snip Free.`);
+    this.name = 'CreatorLimitError';
+  }
+}
 
 export function useFollowedCreators() {
   const { session } = useAuth();
@@ -96,10 +106,15 @@ export function useFollowCreator() {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.show);
   const userId = session?.user.id;
+  const { isPro } = usePurchases();
+  const { data: followedCreators } = useFollowedCreators();
 
   return useMutation({
     mutationFn: async (channel: { platform: CreatorPlatform; id: string; title: string; handle: string | null; avatarUrl: string | null }) => {
       if (!userId) throw new Error('You need to be signed in to follow a creator.');
+      if (!isPro && (followedCreators?.length ?? 0) >= FREE_CREATOR_FOLLOW_LIMIT) {
+        throw new CreatorLimitError();
+      }
 
       const insert: FollowedCreatorInsert = {
         user_id: userId,
@@ -124,6 +139,11 @@ export function useFollowCreator() {
           ? `Imported ${imported} recipe${imported === 1 ? '' : 's'} from ${creator.creator_name}`
           : `Now following ${creator.creator_name}`
       );
+    },
+    onError: (error) => {
+      if (error instanceof CreatorLimitError) {
+        usePaywallStore.getState().open('creator_limit');
+      }
     },
   });
 }

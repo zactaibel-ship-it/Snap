@@ -14,6 +14,7 @@ import { useDeleteRecipeWithUndo, useRecipes } from '@/hooks/useRecipes';
 import { useAddRecipeToShoppingList } from '@/hooks/useShoppingList';
 import { applyRecipeFiltersAndSearch, countActiveFilters, DEFAULT_FILTERS, type RecipeFilters } from '@/lib/recipeFilters';
 import { formatTagLabel } from '@/constants/recipeTags';
+import { useOnboardingTooltipStore } from '@/stores/onboardingTooltipStore';
 import type { Recipe } from '@/lib/database.types';
 
 const TAB_BAR_CLEARANCE = 72;
@@ -35,6 +36,9 @@ export default function HomeScreen() {
 
   const addToShoppingList = useAddRecipeToShoppingList();
   const deleteRecipeWithUndo = useDeleteRecipeWithUndo();
+
+  const shouldShowFabTooltip = useOnboardingTooltipStore((state) => state.shouldShowFabTooltip);
+  const dismissFabTooltip = useOnboardingTooltipStore((state) => state.dismissFabTooltip);
 
   const visibleRecipes = useMemo(
     () => applyRecipeFiltersAndSearch(recipes ?? [], search, filters),
@@ -220,10 +224,25 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {shouldShowFabTooltip && (
+        <View
+          className="absolute right-5 items-end"
+          style={{ bottom: insets.bottom + TAB_BAR_CLEARANCE + 72 }}
+          pointerEvents="none"
+        >
+          <View className="max-w-[180px] rounded-2xl bg-text px-3.5 py-2.5">
+            <Text className="text-sm font-medium text-white">Tap + to save your first recipe</Text>
+          </View>
+        </View>
+      )}
+
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Add a recipe"
-        onPress={() => setIsAddSheetOpen(true)}
+        onPress={() => {
+          dismissFabTooltip();
+          setIsAddSheetOpen(true);
+        }}
         className="absolute right-5 h-16 w-16 items-center justify-center rounded-full bg-primary"
         style={{
           bottom: insets.bottom + TAB_BAR_CLEARANCE,

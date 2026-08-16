@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Sheet } from '@/components/ui/Sheet';
 import { useExtractRecipe } from '@/hooks/useRecipes';
+import { ExtractionLimitError } from '@/lib/api/extract';
 import { useExtractionStore } from '@/stores/extractionStore';
 
 import { RecipeExtractingLoader } from './RecipeExtractingLoader';
@@ -43,8 +44,14 @@ export function AddRecipeSheet({ visible, onClose }: AddRecipeSheetProps) {
           "We didn't have much to go on for this video, so a few details may be off — take a look before you cook."
         );
       }
-    } catch {
-      // The error is already surfaced via the extraction store — stay open for retry.
+    } catch (error) {
+      if (error instanceof ExtractionLimitError) {
+        // The paywall is already opened via useExtractRecipe's onError — just close this sheet.
+        setUrl('');
+        onClose();
+        return;
+      }
+      // Other errors are already surfaced via the extraction store — stay open for retry.
     }
   };
 

@@ -22,6 +22,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const YOUTUBE_DATA_API_KEY = Deno.env.get('YOUTUBE_DATA_API_KEY') ?? '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
 
+const FREE_MONTHLY_EXTRACTION_LIMIT = 10;
+
 type Platform = 'youtube' | 'tiktok' | 'instagram';
 
 const DIETARY_TAGS = [
@@ -55,6 +57,11 @@ class ExtractionError extends Error {
   ) {
     super(message);
   }
+}
+
+function currentMonthStart(): string {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
 }
 
 function detectPlatform(url: string): Platform | null {
@@ -399,6 +406,28 @@ Deno.serve(async (req) => {
       return jsonResponse({ recipe: existingRecipe, lowConfidence: false, alreadyImported: true });
     }
 
+    const { data: usageRow, error: usageError } = await adminClient
+      .from('users')
+      .select('is_pro, extraction_count, extraction_reset_date')
+      .eq('id', userId)
+      .single();
+
+    if (usageError || !usageRow) {
+      throw new ExtractionError('extraction_failed', 'Could not verify your account.', 500);
+    }
+
+    const monthStart = currentMonthStart();
+    const isNewMonth = usageRow.extraction_reset_date !== monthStart;
+    const extractionCount = isNewMonth ? 0 : usageRow.extraction_count;
+
+    if (!usageRow.is_pro && extractionCount >= FREE_MONTHLY_EXTRACTION_LIMIT) {
+      throw new ExtractionError(
+        'extraction_limit_reached',
+        `You've used all ${FREE_MONTHLY_EXTRACTION_LIMIT} free extractions this month. Upgrade to Snip Pro for unlimited extractions.`,
+        403
+      );
+    }
+
     const context = await gatherContext(platform, url);
     const aiPayload = await extractRecipeWithAI({
       title: context.title,
@@ -432,6 +461,13 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       throw new ExtractionError('extraction_failed', insertError.message, 500);
+    }
+
+    if (!usageRow.is_pro) {
+      await adminClient
+        .from('users')
+        .update({ extraction_count: extractionCount + 1, extraction_reset_date: monthStart })
+        .eq('id', userId);
     }
 
     return jsonResponse({ recipe: savedRecipe, lowConfidence: context.lowConfidence });

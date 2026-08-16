@@ -8,6 +8,13 @@ interface ExtractRecipeFunctionResponse {
   lowConfidence?: boolean;
 }
 
+export class ExtractionLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ExtractionLimitError';
+  }
+}
+
 const ERROR_MESSAGES: Record<string, string> = {
   unsupported_platform: 'Only YouTube, TikTok, and Instagram Reel links are supported right now.',
   invalid_url: "That doesn't look like a valid link. Check it and try again.",
@@ -38,7 +45,11 @@ export async function extractRecipe(url: string, userId: string): Promise<{ reci
         // Response body wasn't JSON — no code to map, fall back to a generic message.
       }
     }
-    throw new Error(mapErrorCode(code, error.message || 'Something went wrong. Please try again.'));
+    const message = mapErrorCode(code, error.message || 'Something went wrong. Please try again.');
+    if (code === 'extraction_limit_reached') {
+      throw new ExtractionLimitError(message);
+    }
+    throw new Error(message);
   }
 
   if (!data?.recipe) {

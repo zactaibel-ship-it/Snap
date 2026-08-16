@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { extractRecipe } from '@/lib/api/extract';
+import { ExtractionLimitError, extractRecipe } from '@/lib/api/extract';
 import { deleteRecipe, getRecipeById, getRecipes, updateRecipe } from '@/lib/api/recipes';
 import { useAuth } from '@/hooks/useAuth';
 import { useExtractionStore } from '@/stores/extractionStore';
+import { usePaywallStore } from '@/stores/paywallStore';
 import { useUndoStore } from '@/stores/undoStore';
 import type { Database, Recipe } from '@/lib/database.types';
 
@@ -62,6 +63,11 @@ export function useExtractRecipe() {
       reset();
     },
     onError: (error: Error) => {
+      if (error instanceof ExtractionLimitError) {
+        reset();
+        usePaywallStore.getState().open('extraction_limit');
+        return;
+      }
       setError(error.message);
     },
   });

@@ -18,6 +18,11 @@ export type User = {
   dietary_preferences: string[];
   supermarket_preference: SupermarketPreference;
   push_token: string | null;
+  is_pro: boolean;
+  pro_product_id: string | null;
+  pro_expires_at: string | null;
+  extraction_count: number;
+  extraction_reset_date: string | null;
   created_at: string;
 };
 
@@ -89,7 +94,18 @@ export type Database = {
     Tables: {
       users: {
         Row: User;
-        Insert: Omit<User, 'created_at' | 'push_token'> & { created_at?: string; push_token?: string | null };
+        Insert: Omit<
+          User,
+          'created_at' | 'push_token' | 'is_pro' | 'pro_product_id' | 'pro_expires_at' | 'extraction_count' | 'extraction_reset_date'
+        > & {
+          created_at?: string;
+          push_token?: string | null;
+          is_pro?: boolean;
+          pro_product_id?: string | null;
+          pro_expires_at?: string | null;
+          extraction_count?: number;
+          extraction_reset_date?: string | null;
+        };
         Update: Partial<Omit<User, 'id'>>;
         Relationships: [];
       };

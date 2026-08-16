@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CreatorCard } from '@/components/creator/CreatorCard';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import {
+  CreatorLimitError,
   useFollowCreator,
   useFollowedCreators,
   useSearchCreators,
@@ -60,7 +61,10 @@ export default function DiscoverScreen() {
         avatarUrl: channel.avatarUrl,
       });
     } catch (error) {
-      Alert.alert('Could not follow creator', error instanceof Error ? error.message : 'Please try again.');
+      // The paywall is already opened via useFollowCreator's onError for the free-tier limit.
+      if (!(error instanceof CreatorLimitError)) {
+        Alert.alert('Could not follow creator', error instanceof Error ? error.message : 'Please try again.');
+      }
     } finally {
       setFollowingChannelId(null);
     }

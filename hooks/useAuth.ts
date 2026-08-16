@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
+import { loginRevenueCatUser, logoutRevenueCatUser } from '@/lib/revenuecat';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import type { Database, SupermarketPreference } from '@/lib/database.types';
@@ -30,6 +31,16 @@ export function useAuth() {
       subscription.subscription.unsubscribe();
     };
   }, [setSession, setInitialized]);
+
+  useEffect(() => {
+    if (session?.user) {
+      loginRevenueCatUser(session.user.id).catch((error) =>
+        console.warn('Failed to log in RevenueCat user', error)
+      );
+    } else {
+      logoutRevenueCatUser();
+    }
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!session?.user) {

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RecipeExtractingLoader } from '@/components/recipe/RecipeExtractingLoader';
 import { Button } from '@/components/ui/Button';
 import { useExtractRecipe } from '@/hooks/useRecipes';
+import { ExtractionLimitError } from '@/lib/api/extract';
 import { useExtractionStore } from '@/stores/extractionStore';
 
 /**
@@ -29,8 +30,13 @@ export default function ExtractFromShareScreen() {
       .then(({ recipe }) => {
         router.replace(`/recipe/${recipe.id}`);
       })
-      .catch(() => {
-        // Error surfaced via extractionStore and rendered below.
+      .catch((error) => {
+        if (error instanceof ExtractionLimitError) {
+          // The paywall opens itself (via useExtractRecipe's onError) on top of whatever's underneath.
+          router.replace('/(tabs)');
+          return;
+        }
+        // Other errors are surfaced via extractionStore and rendered below.
       });
   }, [url, mutateAsync]);
 

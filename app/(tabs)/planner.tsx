@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { AISLE_GROUPS, getAisleGroup } from '@/constants/aisleGroups';
+import { usePurchases } from '@/hooks/usePurchases';
 import { useRecipes } from '@/hooks/useRecipes';
 import {
   useAddRecipeToSlot,
@@ -22,6 +23,7 @@ import {
 } from '@/hooks/usePlanner';
 import { useClearCompletedItems, useDeleteShoppingListItem, useShoppingListItems, useToggleShoppingItem } from '@/hooks/useShoppingList';
 import { formatWeekRangeLabel, getMondayOfWeek } from '@/lib/api/planner';
+import { usePaywallStore } from '@/stores/paywallStore';
 import { useToastStore } from '@/stores/toastStore';
 import type { MealPlanSlot, MealType, Recipe } from '@/lib/database.types';
 import type { Retailer } from '@/lib/retailerLinks';
@@ -36,10 +38,21 @@ function addWeeks(dateString: string, weeks: number): string {
 
 export default function PlannerScreen() {
   const [activeTab, setActiveTab] = useState<PlannerTab>('week');
-  const [weekStartDate, setWeekStartDate] = useState(() => getMondayOfWeek(new Date()));
+  const currentWeekStartDate = useMemo(() => getMondayOfWeek(new Date()), []);
+  const [weekStartDate, setWeekStartDate] = useState(currentWeekStartDate);
 
   const insets = useSafeAreaInsets();
   const showToast = useToastStore((state) => state.show);
+  const { isPro } = usePurchases();
+  const openPaywall = usePaywallStore((state) => state.open);
+
+  const handleChangeWeek = (nextWeekStartDate: string) => {
+    if (!isPro && nextWeekStartDate > currentWeekStartDate) {
+      openPaywall('future_planning');
+      return;
+    }
+    setWeekStartDate(nextWeekStartDate);
+  };
 
   const { data: mealPlan } = useWeekPlan(weekStartDate);
   const { data: slots } = useMealPlanSlots(mealPlan?.id);
@@ -98,7 +111,7 @@ export default function PlannerScreen() {
       {activeTab === 'week' ? (
         <ThisWeekView
           weekStartDate={weekStartDate}
-          onChangeWeek={setWeekStartDate}
+          onChangeWeek={handleChangeWeek}
           slots={slots ?? []}
           recipesById={recipesById}
           mealPlanId={mealPlan?.id}
@@ -224,6 +237,8 @@ function ShoppingListView({ recipesById, bottomInset }: ShoppingListViewProps) {
   const toggleItem = useToggleShoppingItem();
   const deleteItem = useDeleteShoppingListItem();
   const clearCompleted = useClearCompletedItems();
+  const { isPro } = usePurchases();
+  const openPaywall = usePaywallStore((state) => state.open);
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
@@ -328,12 +343,32 @@ function ShoppingListView({ recipesById, bottomInset }: ShoppingListViewProps) {
       )}
 
       <View className="flex-row gap-3 border-t border-border bg-surface px-5 pt-3" style={{ paddingBottom: bottomInset + 12 }}>
-        <Button label="Shop on Tesco" onPress={() => setCheckoutRetailer('tesco')} className="flex-1 bg-[#00539F]" />
-        <Button
-          label="Shop on Sainsbury's"
-          onPress={() => setCheckoutRetailer('sainsburys')}
-          className="flex-1 bg-[#FF8200]"
-        />
+        <Pressable
+          className="flex-1"
+          onPress={() => (isPro ? setCheckoutRetailer('tesco') : openPaywall('retailer_checkout'))}
+        >
+          <View className="min-h-[48px] items-center justify-center rounded-2xl bg-[#00539F]" style={!isPro ? { opacity: 0.4 } : undefined}>
+            <Text className="text-base font-semibold text-white">Shop on Tesco</Text>
+          </View>
+          {!isPro && (
+            <View className="absolute inset-0 items-center justify-center">
+              <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+            </View>
+          )}
+        </Pressable>
+        <Pressable
+          className="flex-1"
+          onPress={() => (isPro ? setCheckoutRetailer('sainsburys') : openPaywall('retailer_checkout'))}
+        >
+          <View className="min-h-[48px] items-center justify-center rounded-2xl bg-[#FF8200]" style={!isPro ? { opacity: 0.4 } : undefined}>
+            <Text className="text-base font-semibold text-white">Shop on Sainsbury&apos;s</Text>
+          </View>
+          {!isPro && (
+            <View className="absolute inset-0 items-center justify-center">
+              <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <AddShoppingItemSheet visible={isAddSheetOpen} onClose={() => setIsAddSheetOpen(false)} />

@@ -8,15 +8,18 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 
+import { PaywallSheet } from '@/components/paywall/PaywallSheet';
 import { Toast } from '@/components/ui/Toast';
 import { UndoToast } from '@/components/ui/UndoToast';
 import { useAuth } from '@/hooks/useAuth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { configureRevenueCat } from '@/lib/revenuecat';
 import { queryClient } from '@/lib/queryClient';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+configureRevenueCat();
 
-function useProtectedRoute(isSignedIn: boolean, isInitialized: boolean) {
+function useProtectedRoute(isSignedIn: boolean, isInitialized: boolean, needsOnboarding: boolean) {
   const segments = useSegments();
   const router = useRouter();
 
@@ -24,13 +27,18 @@ function useProtectedRoute(isSignedIn: boolean, isInitialized: boolean) {
     if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === 'auth';
+    const inOnboarding = segments[0] === 'onboarding';
 
     if (!isSignedIn && !inAuthGroup) {
       router.replace('/auth/sign-in');
     } else if (isSignedIn && inAuthGroup) {
       router.replace('/(tabs)');
+    } else if (isSignedIn && needsOnboarding && !inOnboarding) {
+      router.replace('/onboarding');
+    } else if (isSignedIn && !needsOnboarding && inOnboarding) {
+      router.replace('/(tabs)');
     }
-  }, [isSignedIn, isInitialized, segments, router]);
+  }, [isSignedIn, isInitialized, needsOnboarding, segments, router]);
 }
 
 function useNotificationTapNavigation() {
@@ -46,8 +54,8 @@ function useNotificationTapNavigation() {
 }
 
 function RootLayoutNav() {
-  const { isSignedIn, isInitialized } = useAuth();
-  useProtectedRoute(isSignedIn, isInitialized);
+  const { isSignedIn, isInitialized, needsOnboarding } = useAuth();
+  useProtectedRoute(isSignedIn, isInitialized, needsOnboarding);
   usePushNotifications();
   useNotificationTapNavigation();
 
@@ -66,6 +74,7 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="auth" />
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen
           name="recipe/[id]"
           options={{ headerShown: true, title: '', headerBackTitle: 'Back' }}
@@ -79,6 +88,7 @@ function RootLayoutNav() {
       </Stack>
       <UndoToast />
       <Toast />
+      <PaywallSheet />
     </>
   );
 }
